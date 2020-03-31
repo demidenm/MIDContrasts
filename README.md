@@ -5,6 +5,7 @@ This repository contains information for scripts used in the manuscript [xxxx]. 
 The contents in the main folder contain the [MID_Contrasts_R Code.Rmd] file used in creating correlational matrices used in subsequent bootstrapping and bayes analyses, heatmap presented in the manuscript, general demographic and behavioral correlational table. The [PredictionError_code.Rmd] file was used in conjuction with the behavioral data collected by E-Prime to create Expected Value, Prediction error (Pos and Negative) following the working learnig model presented in the manuscript and below:
 
 RL model trained by reward cues and outcomes (Rescorla & Wagner, 1972):
+
 〖EV〗_t= 〖pGain〗_t  × 〖Cue〗_t
 〖 PE〗_t= 〖RR〗_t  × 〖EV〗_t
 〖pGain〗_(t+1)= 〖pGain〗_t+( ×〖PE〗_t/〖Cue〗_t ) 
