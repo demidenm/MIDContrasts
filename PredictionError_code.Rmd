@@ -1,0 +1,165 @@
+---
+title: "PE test"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+setwd("~/Desktop/")
+
+data <- read.csv("single subject.csv", header = T, na.strings = "NA")
+```
+
+```{r}
+# Calculate Expect_Reward column based on stimulus value (e.g., Cue = Win $5 = Expect Rew = 5, etc)
+for (v in 1:length(data$Cue.Condition)){
+     if(data$Cue.Condition[v]==1){ # Big Win $5
+       data$Expect_Rew[v]<-5
+     } else if (data$Cue.Condition[v]==2){ #Small win $0.20
+       data$Expect_Rew[v]<-.20
+     } else if (data$Cue.Condition[v]==3){ #Neutral $0
+       data$Expect_Rew[v]<-0
+     } else if (data$Cue.Condition[v]==4){ #small lose $0.20
+       data$Expect_Rew[v]<- -.20
+     } else if (data$Cue.Condition[v]==5){ #Big Lose $5
+       data$Expect_Rew[v]<- -5
+     } else {
+       print("error in row" = v)
+     }
+}
+
+# Calculate Outcome reward column based on stimulus value and outcome (e.g., Cue = Win $5 and hit = 5, if miss = 0)
+for (v in 1:length(data$Feedback.Condition)){
+     if(data$Feedback.Condition[v]==0){ # Big Win + Hit = $5
+       data$Outcome[v]<-5
+     } else if (data$Feedback.Condition[v]==1){ # Big Win + Miss = 0
+       data$Outcome[v]<-0
+     } else if (data$Feedback.Condition[v]==2){ #Win Small + Hit = .20
+       data$Outcome[v]<-.20
+     } else if (data$Feedback.Condition[v]==3){ #Win Small + MISS = 0
+       data$Outcome[v]<- 0
+     } else if (data$Feedback.Condition[v]==4){ #Neutral + Hit = 0
+       data$Outcome[v]<- 0
+     } else if (data$Feedback.Condition[v]==5){ #Neutral + miss = 0
+       data$Outcome[v]<- 0
+     } else if (data$Feedback.Condition[v]==6){ #Small lose + miss = 0
+       data$Outcome[v]<-0
+     } else if (data$Feedback.Condition[v]==7){ #small lose = MISS = - $0.20
+       data$Outcome[v]<- -.20
+     } else if (data$Feedback.Condition[v]==8){ #Big Lose + hit = 0 
+       data$Outcome[v]<- 0
+     } else if (data$Feedback.Condition[v]==9){ #Big lose + miss = -5
+       data$Outcome[v]<- -5
+     } else {
+       print("error in row" = v)
+     }
+}
+```
+
+```{r}
+
+# Calculating PE values 
+library(dplyr)
+data$EV <- NA
+data$PE <- NA
+data$gain <-NA
+
+# Creating 2.220446e-16 variable that can be used to reduce NaN error when dividing 0/0
+non = .Machine$double.eps
+
+data = dplyr::group_by(data, Subject)
+for (r in 1:length(data$Subject)){
+  # First probability, 50/50
+  if(r==1){
+    data$gain = 0.5
+    data$EV[r]<- data$gain[r] * data$Expect_Rew[r]
+    data$PE[r]<- data$Outcome[r] - data$EV[r]
+  }
+  else{
+    data$gain[r] = data$gain[r-1] + 0.7*data$PE[r-1]/(non+data$Expect_Rew[r-1])
+    data$EV[r]<- data$gain[r] * data$Expect_Rew[r]
+    data$PE[r]<- data$Outcome[r] - data$EV[r]
+
+  }
+
+}
+
+```
+
+```{r}
+library(dplyr)
+
+
+data = read.csv("~/Desktop/UM/AHRB/Projects/Imaging/Tasks/MID/Wave1/MIDMerge.Wave1_Final_2019_09_06.csv", header = T, na.strings = "NA")
+
+# Calculate Expect_Reward column based on stimulus value (e.g., Cue = Win $5 = Expect Rew = 5, etc)
+
+data$Expect_Rew[data$Cue.Condition==1] = 5     # Big Win $5
+data$Expect_Rew[data$Cue.Condition==2] = 0.2   #Small win $0.20
+data$Expect_Rew[data$Cue.Condition==3] = 0     #Neutral $0
+data$Expect_Rew[data$Cue.Condition==4] = -0.2  #small lose $0.20
+data$Expect_Rew[data$Cue.Condition==5] = -5    #Big Lose $5
+
+# Calculate Outcome reward column based on stimulus value and outcome (e.g., Cue = Win $5 and hit = 5, if miss = 0)
+
+data$Outcome[data$Feedback.Condition==0] = 5   # Big Win + Hit = $5
+data$Outcome[data$Feedback.Condition==1] = 0   # Big Win + Miss = 0
+data$Outcome[data$Feedback.Condition==2] = 0.2 #Win Small + Hit = .20
+data$Outcome[data$Feedback.Condition==3] = 0   #Win Small + MISS = 0
+data$Outcome[data$Feedback.Condition==4] = 0   #Neutral + Hit = 0
+data$Outcome[data$Feedback.Condition==5] = 0   #Neutral + miss = 0
+data$Outcome[data$Feedback.Condition==6] = 0   #Small lose + miss = 0
+data$Outcome[data$Feedback.Condition==7] = -0.2#small lose = MISS = - $0.20
+data$Outcome[data$Feedback.Condition==8] = 0   #Big Lose + hit = 0 
+data$Outcome[data$Feedback.Condition==9] = -5   #Big lose + miss = -5
+
+
+data$EV <- NA
+data$PE <- NA
+data$gain <-NA
+# Creating 2.220446e-16 variable that can be used to reduce NaN error when dividing 0/0
+non = .Machine$double.eps
+
+# Creating function that will be applied in subsequent step on data
+# Using while loop because we want to reset the loop after every subject, due to first row (for each subject) requiring 50% probability
+reinl = function (x) {
+  r = 1
+  while(r <= length(x$N)){
+    # counts the for = of the data set
+    counter = 1
+    
+    # When the counter exceeds the 100 value (i.e., 101, it will reset, and restart above while loop, starting a new counter for the next subject)
+    while(counter <= x$N[r]) {
+      if(counter==1){
+        x$gain[r] = 0.5
+        x$EV[r] = x$gain[r] * x$Expect_Rew[r]
+        x$PE[r] = x$Outcome[r] - x$EV[r]
+        r = r+1
+      }
+      else{
+        x$gain[r] = x$gain[r-1] + 0.7*x$PE[r-1]/(non+x$Expect_Rew[r-1])
+        x$EV[r] = x$gain[r] * x$Expect_Rew[r]
+        x$PE[r] = x$Outcome[r] - x$EV[r]
+        r = r+1
+        
+        # If r exceeds rows (or length of data) breaks the loop (or exits)
+        if(r>length(x$N)){
+          break
+        }
+      }
+      counter = counter+1
+    }
+  }
+  return (x)
+}
+
+data_grouped = data%>%
+  group_by(Subject)%>%
+  mutate(N = n())
+
+
+data_grouped = reinl(data_grouped)
+
+
+write.csv(data_grouped, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/Behavioral_withEVPE_2019_10_24.csv")
+
+```
