@@ -1,6 +1,6 @@
 # MIDContrasts
 
-This repository contains information for scripts used in the manuscript [xxxx]
+This repository contains information for scripts used in the manuscript [xxxx]. The full preregistered analytic plan was pregistered at https://osf.io/xh7bz, and group level maps are available at NeuroVault, https://neurovault.org/collections/6210/
 
 The contents in the main folder contain the [MID_Contrasts_R Code.Rmd] file used in creating correlational matrices used in subsequent bootstrapping and bayes analyses, heatmap presented in the manuscript, general demographic and behavioral correlational table. The [PredictionError_code.Rmd] file was used in conjuction with the behavioral data collected by E-Prime to create Expected Value, Prediction error (Pos and Negative) following the working learnig model presented in the manuscript and below:
 
