@@ -1,0 +1,182 @@
+---
+title: "MID_contrasts"
+output: word_document
+---
+
+```{r message=FALSE, warning=FALSE}
+# load libraries
+library(foreign)
+library(psych)
+library(car)
+library(pastecs)
+library(tidyverse)
+library(reshape2)
+```
+
+## Data import & combining
+```{r message=FALSE, warning=FALSE}
+data = read.spss("~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/AHRB.P1W1-W3.MD_v1.sav", to.data.frame = TRUE)
+  data$id = as.numeric(data$sid)
+data$sid <- as.character(data$sid)
+id = read.csv("~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/subj_id.csv", header = T)
+  id$scan_id <- as.character(id$subj)
+demo = read_csv("demographics.csv")
+  demo$scan_id = as.character(demo$scan_includ)
+demo = left_join(demo, id, by="scan_id")
+demo = demo %>% 
+  filter(!is.na(scan_id))
+
+roi = read.csv("~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/final_meanroi_reorganizedBYroi_trimID.csv", header = T)
+  roi$id = roi$sid
+
+update = left_join(id, data, by = "id" )
+```
+
+### General Descriptives and creating aggregate scores
+```{r}
+# descriptives == use demo dataset
+demo %>% 
+  summarise(Mean_Age = mean(age_p2w1, na.rm = TRUE), SD_Age = sd(age_p2w1, na.rm = TRUE))
+
+demo %>%  
+  group_by(female) %>% 
+  summarise(N = n()) %>% 
+  mutate('Proportion (%)'= N/sum(N)*100) %>% 
+  select(-female)
+```
+
+Recoding variables -- (12-month)alcohol and marijuana from factors to numerical values --- use 'update' dataset
+```{r}
+update$alc_12mon_w1 <- as.numeric(update$alc12_w1)
+update$alc_12mon_w2 <- as.numeric(update$alc12_w2)
+update$alc_12mon_w3 <- as.numeric(update$alc12_w3)
+update$mj_12mon_w1 <- as.numeric(update$mar12_w1)
+update$mj_12mon_w2 <- as.numeric(update$mar12_w2)
+update$mj_12mon_w3 <- as.numeric(update$mar12_w3)
+
+```
+
+z-score variables in order to combine sub use variables as aggregate
+```{r}
+update$alc_12mon_z_w1 <- scale(update$alc_12mon_w1, center = T, scale = T)
+update$alc_12mon_z_w2 <- scale(update$alc_12mon_w2, center = T, scale = T)
+update$alc_12mon_z_w3 <- scale(update$alc_12mon_w3, center = T, scale = T)
+update$mj_12mon_z_w1 <- scale(update$mj_12mon_w1, center = T, scale = T)
+update$mj_12mon_z_w2 <- scale(update$mj_12mon_w2, center = T, scale = T)
+update$mj_12mon_z_w3 <- scale(update$mj_12mon_w3, center = T, scale = T)
+```
+
+creating aggregate scores for: internalizing, externalizing, substance use, impulsivity (BISB), and sensations seeking (BSSS8)
+```{r}
+# Creating average of internalizing wave 1 - wave 2 for waves available per subject
+update = update %>% 
+              mutate(internalizing = 
+                       rowMeans(cbind(z_internal_w1, z_internal_w2, z_internal_w3), 
+                                na.rm = T))
+update = update %>% 
+              mutate(externalizing = 
+                       rowMeans(cbind(z_external_w1, z_external_w2, z_external_w3), 
+                                na.rm = T))
+update = update %>% 
+              mutate(substance = 
+                       rowMeans(cbind(alc_12mon_z_w1, alc_12mon_z_w2, alc_12mon_z_w3, 
+                                      mj_12mon_z_w1, mj_12mon_z_w2, mj_12mon_z_w3),
+                                na.rm = T))
+update = update %>% 
+              mutate(bis = 
+                       rowMeans(cbind(bisb_w1, bisb_w2, bisb_w3),
+                                na.rm = T))
+update = update %>% 
+              mutate(bsss = 
+                       rowMeans(cbind(bsss8_w1, bsss8_w2, bsss8_w3),
+                                na.rm = T))
+
+```
+
+### Created combined ROI mean-sig intensity and behavioral dataset
+```{r}
+beh = update %>% 
+  select(id, internalizing, externalizing, substance, bis,bsss)
+beh$id = as.character(beh$id)
+
+comb = left_join(beh, roi)
+```
+
+### ROI and Beh correlation
+Save in 
+
+```{r}
+roi_corr = cor(comb[sapply(comb, is.numeric)], use = "pairwise.complete.obs", method = "pearson")
+write.csv(roi_corr, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_beh_corr.csv")
+
+```
+
+### Saved combined datafile
+```{r}
+# combined ROI & Beh
+comb = read.csv("~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/CombData_ROIbeh_104.csv", header = T)
+```
+
+
+### Saving individual ROI values for prospective surface maps
+
+```{r}
+# Write by ROI
+acc = cor(roi[,2:11], use = "pairwise.complete.obs", method = "pearson")
+vmpfc = cor(roi[,12:21], use = "pairwise.complete.obs", method = "pearson")
+insula = cor(roi[,22:41], use = "pairwise.complete.obs", method = "pearson")
+ofc = cor(roi[,42:61], use = "pairwise.complete.obs", method = "pearson")
+vs = cor(roi[,62:81], use = "pairwise.complete.obs", method = "pearson")
+
+write.csv(acc, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_corr_grph/acc.csv")
+write.csv(vmpfc, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_corr_grph/vmpfc.csv")
+write.csv(insula, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_corr_grph/insula.csv")
+write.csv(ofc, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_corr_grph/ofc.csv")
+write.csv(vs, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_corr_grph/vs.csv")
+
+```
+
+### Running correlation on ROI signal intensity values in dataset [roi] and generating heatmap
+```{r}
+# RE-ORDER FOR NEW PLOTS
+# seperate bilateral regions
+# Selecting order seq for specific ROIs
+ordered_vec = c(2:21, seq(22,41,2), seq(23,41,2), seq(42,61,2),seq(43,61,2),seq(62,81,2),seq(63,81,2))
+
+# generating correlation values in sequence in above
+roi_correlation = cor(roi[,ordered_vec], use = "pairwise.complete.obs", method = "pearson")
+  # write.csv(roi_correlation, file = "~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/data/roi_correlation_2.csv")
+
+
+# function to only select upper half of correlation
+  get_upper_tri <- function(corr){
+      corr[lower.tri(corr)]<- NA
+      return(corr)
+   }
+
+upper_corr = get_upper_tri(roi_correlation) 
+
+# melting correlation matrix into three columns 
+melted_corr = melt(upper_corr, na.rm = T)
+
+
+# Creating 8 sequences of 1-10 to be used as label in heatmap (e.g., 8 ROI's, each ROI has ten contrasts, e.g ACC1, ACC2, ACC3, etc.)
+relable = as.character(rep(1:10,8))
+
+corr_heatmap = melted_corr %>% 
+  ggplot(aes(x = Var1, y = Var2, fill = value)) + # Variables from melted correlation
+  geom_tile(color = "black") + # creating lines that are dark to differentiate cells
+  xlab("") + # Making X and Y Axis labels blank
+  ylab("") +
+  scale_fill_gradient2(low = "blue", high ="red", mid = "white", # creating gradient from Blue (Low) to Red (High) pearson values, with 0 = white
+                       midpoint = 0, limit = c(-1,1), space = "Lab", # generating limit of correlation of legend, -1 to 1, central point 0
+                       name = "Pearson (r)") + # Legend label
+  theme(axis.text.x = element_text(size = 8)) + # updating theme font size
+  theme(axis.text.y = element_text(size = 8)) +
+  scale_x_discrete(labels = relable) +# altering scale of X & Y axis, using label from store info in relable (e.g., rep(1:10,8))
+  scale_y_discrete(labels = relable) +
+  theme_minimal() +
+  coord_fixed()
+
+ggsave(plot = corr_heatmap, '~/Desktop/UM/AHRB/Projects/Prediction Error Modeling/Figures/aim2_correlationROI/heatmap_2020_03_27.jpeg', width = 12, height = 12)
+```
